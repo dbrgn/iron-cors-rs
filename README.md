@@ -52,7 +52,7 @@ be dual licensed as above, without any additional terms or conditions.
 
 
 <!-- Badges -->
-[travis-ci]: https://travis-ci.org/dbrgn/iron-cors
-[travis-ci-badge]: https://img.shields.io/travis/dbrgn/iron-cors.svg
+[travis-ci]: https://travis-ci.org/dbrgn/iron-cors-rs
+[travis-ci-badge]: https://img.shields.io/travis/dbrgn/iron-cors-rs.svg
 [crates-io]: https://crates.io/crates/iron-cors
 [crates-io-badge]: https://img.shields.io/crates/v/iron-cors.svg
