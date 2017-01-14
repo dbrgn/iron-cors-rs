@@ -24,12 +24,14 @@ allowed hosts.
 
 Initialize the middleware with a vector of allowed host strings:
 
-    extern crate iron_cors;
+```rust
+extern crate iron_cors;
 
-    use iron_cors::CorsMiddleware;
+use iron_cors::CorsMiddleware;
 
-    let allowed_hosts = vec!["example.com".to_string()];
-    let middleware = CorsMiddleware::new(allowed_hosts);
+let allowed_hosts = vec!["example.com".to_string()];
+let middleware = CorsMiddleware::new(allowed_hosts);
+```
 
 See `examples/hello_world.rs` for a full usage example.
 
