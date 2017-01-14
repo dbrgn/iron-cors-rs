@@ -8,11 +8,16 @@ A CORS Middleware for [Iron](http://ironframework.io/).
 See https://www.html5rocks.com/static/images/cors_server_flowchart.png for
 reference.
 
-The middleware will return `HTTP 400 Bad Request` if the Origin host is missing
+The middleware will return `HTTP 400 Bad Request` if the origin host is missing
 or not allowed.
 
 Preflight requests are not yet supported. Neither is it currently possible to
 simply allow any origin host.
+
+Currently, the user of the middleware must specify a list of allowed hosts
+(port or protocol aren't being checked by the middleware). The wrapped handler
+will only be executed if the hostname in the `Origin` header matches one of the
+allowed hosts.
 
 
 ## Usage
