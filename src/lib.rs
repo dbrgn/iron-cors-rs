@@ -22,14 +22,10 @@
 //! Initialize the middleware with a vector of allowed host strings:
 //!
 //! ```rust
-//! extern crate iron_cors;
-//!
 //! use iron_cors::CorsMiddleware;
 //!
-//! # fn main() {
 //! let allowed_hosts = vec!["example.com".to_string()];
 //! let middleware = CorsMiddleware::with_whitelist(allowed_hosts);
-//! # }
 //! ```
 //!
 //! See `examples/whitelist.rs` for a full usage example.
@@ -40,13 +36,9 @@
 //! will only be executed if the `Origin` header is set. The value doesn't matter.
 //!
 //! ```rust
-//! extern crate iron_cors;
-//!
 //! use iron_cors::CorsMiddleware;
 //!
-//! # fn main() {
 //! let middleware = CorsMiddleware::with_allow_any(true);
-//! # }
 //! ```
 //!
 //! The boolean flag specifies whether requests without an `Origin` header should
