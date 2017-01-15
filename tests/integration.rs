@@ -16,14 +16,14 @@ impl Handler for HelloWorldHandler {
 }
 
 macro_rules! setup_handler {
-    ( $allowed_hosts:expr ) => {{
+    ("whitelist": $allowed_hosts:expr) => {{
         let mut chain = Chain::new(HelloWorldHandler {});
         chain.link_around(CorsMiddleware::with_whitelist($allowed_hosts));
         chain
     }};
-    () => {{
+    ("any": $allow_invalid:expr) => {{
         let mut chain = Chain::new(HelloWorldHandler {});
-        chain.link_around(CorsMiddleware::with_allow_any());
+        chain.link_around(CorsMiddleware::with_allow_any($allow_invalid));
         chain
     }};
 }
@@ -48,7 +48,7 @@ fn test_no_middleware() {
 
 #[test]
 fn test_missing_origin_header() {
-    let handler = setup_handler!(vec!["example.org".to_string()]);
+    let handler = setup_handler!("whitelist": vec!["example.org".to_string()]);
     let headers = Headers::new();
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::BadRequest));
@@ -58,7 +58,7 @@ fn test_missing_origin_header() {
 
 #[test]
 fn test_host_disallowed() {
-    let handler = setup_handler!(vec!["example.org".to_string()]);
+    let handler = setup_handler!("whitelist": vec!["example.org".to_string()]);
     let headers = setup_origin_header!("forbidden.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::BadRequest));
@@ -68,7 +68,7 @@ fn test_host_disallowed() {
 
 #[test]
 fn test_host_allowed() {
-    let handler = setup_handler!(vec!["example.org".to_string()]);
+    let handler = setup_handler!("whitelist": vec!["example.org".to_string()]);
     let headers = setup_origin_header!("example.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::Ok));
@@ -78,10 +78,28 @@ fn test_host_allowed() {
 
 #[test]
 fn test_allow_any() {
-    let handler = setup_handler!();
+    let handler = setup_handler!("any": false);
     let headers = setup_origin_header!("example.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::Ok));
     let result_body = response::extract_body_to_string(response);
     assert_eq!(&result_body, "Hello, world!");
+}
+
+#[test]
+fn test_allow_any_missing_header_allowed() {
+    let handler = setup_handler!("any": true);
+    let response = request::get("http://example.org:3000/hello", Headers::new(), &handler).unwrap();
+    assert_eq!(response.status, Some(status::Ok));
+    let result_body = response::extract_body_to_string(response);
+    assert_eq!(&result_body, "Hello, world!");
+}
+
+#[test]
+fn test_allow_any_missing_header_denied() {
+    let handler = setup_handler!("any": false);
+    let response = request::get("http://example.org:3000/hello", Headers::new(), &handler).unwrap();
+    assert_eq!(response.status, Some(status::BadRequest));
+    let result_body = response::extract_body_to_string(response);
+    assert_eq!(&result_body, "Invalid CORS request: Origin header missing");
 }
