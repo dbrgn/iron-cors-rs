@@ -19,7 +19,7 @@ fn main() {
     // Initialize middleware
     let allowed_hosts = vec!["example.com".to_string()];
     println!("Allowed origin hosts: {:?}", allowed_hosts);
-    let cors_middleware = CorsMiddleware::new(allowed_hosts);
+    let cors_middleware = CorsMiddleware::with_whitelist(allowed_hosts);
 
     // Setup chain with middleware
     let mut chain = Chain::new(handler);

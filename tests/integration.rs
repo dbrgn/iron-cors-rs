@@ -18,7 +18,12 @@ impl Handler for HelloWorldHandler {
 macro_rules! setup_handler {
     ( $allowed_hosts:expr ) => {{
         let mut chain = Chain::new(HelloWorldHandler {});
-        chain.link_around(CorsMiddleware::new($allowed_hosts));
+        chain.link_around(CorsMiddleware::with_whitelist($allowed_hosts));
+        chain
+    }};
+    () => {{
+        let mut chain = Chain::new(HelloWorldHandler {});
+        chain.link_around(CorsMiddleware::with_allow_any());
         chain
     }};
 }
@@ -64,6 +69,16 @@ fn test_host_disallowed() {
 #[test]
 fn test_host_allowed() {
     let handler = setup_handler!(vec!["example.org".to_string()]);
+    let headers = setup_origin_header!("example.org");
+    let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
+    assert_eq!(response.status, Some(status::Ok));
+    let result_body = response::extract_body_to_string(response);
+    assert_eq!(&result_body, "Hello, world!");
+}
+
+#[test]
+fn test_allow_any() {
+    let handler = setup_handler!();
     let headers = setup_origin_header!("example.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::Ok));

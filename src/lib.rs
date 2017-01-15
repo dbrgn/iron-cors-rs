@@ -16,24 +16,31 @@ use iron::{headers, status};
 
 /// The struct that holds the CORS configuration.
 pub struct CorsMiddleware {
-    allowed_hosts: Vec<String>,
+    allowed_hosts: Option<Vec<String>>,
 }
 
 impl CorsMiddleware {
-    pub fn new(allowed_hosts: Vec<String>) -> Self {
-        CorsMiddleware { allowed_hosts: allowed_hosts }
+    /// Specify which origin hosts are allowed to access the resource.
+    pub fn with_whitelist(allowed_hosts: Vec<String>) -> Self {
+        CorsMiddleware { allowed_hosts: Some(allowed_hosts) }
+    }
+
+    /// Allow all origin to access the resource.
+    pub fn with_allow_any() -> Self {
+        CorsMiddleware { allowed_hosts: None }
     }
 }
 
 impl AroundMiddleware for CorsMiddleware {
     fn around(self, handler: Box<Handler>) -> Box<Handler> {
+        // TODO: Can we prevent this allocation?
         Box::new(CorsHandler { handler: handler, allowed_hosts: self.allowed_hosts.clone() })
     }
 }
 
 struct CorsHandler {
     handler: Box<Handler>,
-    allowed_hosts: Vec<String>,
+    allowed_hosts: Option<Vec<String>>,
 }
 
 
@@ -54,8 +61,13 @@ impl Handler for CorsHandler {
         };
 
         // Verify origin header
-        if self.allowed_hosts.contains(&origin.host.hostname) {
+        let may_process = match self.allowed_hosts {
+            Some(ref allowed_hosts) => allowed_hosts.contains(&origin.host.hostname),
+            None => true,
+        };
 
+        // Process request
+        if may_process {
             // Everything OK, process request
             let mut res = try!(self.handler.handle(req));
 

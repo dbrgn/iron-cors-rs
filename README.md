@@ -11,16 +11,19 @@ reference.
 The middleware will return `HTTP 400 Bad Request` if the origin host is missing
 or not allowed.
 
-Preflight requests are not yet supported. Neither is it currently possible to
-simply allow any origin host.
-
-Currently, the user of the middleware must specify a list of allowed hosts
-(port or protocol aren't being checked by the middleware). The wrapped handler
-will only be executed if the hostname in the `Origin` header matches one of the
-allowed hosts.
+Preflight requests are not yet supported.
 
 
 ## Usage
+
+There are two modes available:
+
+### Whitelist
+
+The user of the middleware must specify a list of allowed hosts (port or
+protocol aren't being checked by the middleware). The wrapped handler will only
+be executed if the hostname in the `Origin` header matches one of the allowed
+hosts.
 
 Initialize the middleware with a vector of allowed host strings:
 
@@ -30,10 +33,25 @@ extern crate iron_cors;
 use iron_cors::CorsMiddleware;
 
 let allowed_hosts = vec!["example.com".to_string()];
-let middleware = CorsMiddleware::new(allowed_hosts);
+let middleware = CorsMiddleware::with_whitelist(allowed_hosts);
 ```
 
-See `examples/hello_world.rs` for a full usage example.
+See `examples/whitelist.rs` for a full usage example.
+
+### Allow Any
+
+The user of the middleware can allow any origin header. The wrapped handler
+will only be executed if the `Origin` header is set. The value doesn't matter.
+
+```rust
+extern crate iron_cors;
+
+use iron_cors::CorsMiddleware;
+
+let middleware = CorsMiddleware::with_allow_any();
+```
+
+See `examples/allow_any.rs` for a full usage example.
 
 
 ## License
