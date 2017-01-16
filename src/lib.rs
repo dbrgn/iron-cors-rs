@@ -88,10 +88,9 @@ impl CorsMiddleware {
 impl AroundMiddleware for CorsMiddleware {
     fn around(self, handler: Box<Handler>) -> Box<Handler> {
         match self.allowed_hosts {
-            Some(ref allowed_hosts) => Box::new(CorsHandlerWhitelist {
+            Some(allowed_hosts) => Box::new(CorsHandlerWhitelist {
                 handler: handler,
-                // TODO: Can we prevent this allocation?
-                allowed_hosts: allowed_hosts.clone(),
+                allowed_hosts: allowed_hosts,
             }),
             None => Box::new(CorsHandlerAllowAny {
                 handler: handler,
