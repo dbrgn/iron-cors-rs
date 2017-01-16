@@ -1,6 +1,8 @@
 extern crate iron;
 extern crate iron_cors;
 
+use std::collections::HashSet;
+
 use iron::{Iron, Handler, Request, Response, IronResult, Chain, status};
 use iron_cors::CorsMiddleware;
 
@@ -17,7 +19,7 @@ fn main() {
     let handler = HelloWorldHandler {};
 
     // Initialize middleware
-    let allowed_hosts = vec!["example.com".to_string()];
+    let allowed_hosts = ["example.com"].iter().map(ToString::to_string).collect::<HashSet<_>>();
     println!("Allowed origin hosts: {:?}", allowed_hosts);
     let cors_middleware = CorsMiddleware::with_whitelist(allowed_hosts);
 

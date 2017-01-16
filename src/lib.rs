@@ -19,12 +19,13 @@
 //! be executed if the hostname in the `Origin` header matches one of the allowed
 //! hosts. Requests without an `Origin` header will be rejected.
 //!
-//! Initialize the middleware with a vector of allowed host strings:
+//! Initialize the middleware with a HashSet of allowed host strings:
 //!
 //! ```rust
+//! use std::collections::HashSet;
 //! use iron_cors::CorsMiddleware;
 //!
-//! let allowed_hosts = vec!["example.com".to_string()];
+//! let allowed_hosts = ["example.com"].iter().map(ToString::to_string).collect::<HashSet<_>>();
 //! let middleware = CorsMiddleware::with_whitelist(allowed_hosts);
 //! ```
 //!
@@ -49,12 +50,14 @@
 extern crate iron;
 #[macro_use] extern crate log;
 
+use std::collections::HashSet;
+
 use iron::{Request, Response, IronResult, AroundMiddleware, Handler};
 use iron::{headers, status};
 
 /// The struct that holds the CORS configuration.
 pub struct CorsMiddleware {
-    allowed_hosts: Option<Vec<String>>,
+    allowed_hosts: Option<HashSet<String>>,
     allow_invalid: bool,
 }
 
@@ -62,7 +65,7 @@ impl CorsMiddleware {
     /// Specify which origin hosts are allowed to access the resource.
     ///
     /// Requests without an `Origin` header will be rejected.
-    pub fn with_whitelist(allowed_hosts: Vec<String>) -> Self {
+    pub fn with_whitelist(allowed_hosts: HashSet<String>) -> Self {
         CorsMiddleware {
             allowed_hosts: Some(allowed_hosts),
             allow_invalid: false,
@@ -103,7 +106,7 @@ impl AroundMiddleware for CorsMiddleware {
 /// Handler for whitelist based rules.
 struct CorsHandlerWhitelist {
     handler: Box<Handler>,
-    allowed_hosts: Vec<String>,
+    allowed_hosts: HashSet<String>,
 }
 
 /// Handler if allowing any origin.

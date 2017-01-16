@@ -2,6 +2,8 @@ extern crate iron;
 extern crate iron_cors;
 extern crate iron_test;
 
+use std::collections::HashSet;
+
 use iron::{Handler, Request, Response, IronResult, Chain, status};
 use iron::headers::{Headers, Origin};
 use self::iron_test::{request, response};
@@ -18,7 +20,8 @@ impl Handler for HelloWorldHandler {
 macro_rules! setup_handler {
     ("whitelist": $allowed_hosts:expr) => {{
         let mut chain = Chain::new(HelloWorldHandler {});
-        chain.link_around(CorsMiddleware::with_whitelist($allowed_hosts));
+        let whitelist = $allowed_hosts.iter().map(ToString::to_string).collect::<HashSet<_>>();
+        chain.link_around(CorsMiddleware::with_whitelist(whitelist));
         chain
     }};
     ("any": $allow_invalid:expr) => {{
@@ -48,7 +51,7 @@ fn test_no_middleware() {
 
 #[test]
 fn test_missing_origin_header() {
-    let handler = setup_handler!("whitelist": vec!["example.org".to_string()]);
+    let handler = setup_handler!("whitelist": ["example.org"]);
     let headers = Headers::new();
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::BadRequest));
@@ -58,7 +61,7 @@ fn test_missing_origin_header() {
 
 #[test]
 fn test_host_disallowed() {
-    let handler = setup_handler!("whitelist": vec!["example.org".to_string()]);
+    let handler = setup_handler!("whitelist": ["example.org"]);
     let headers = setup_origin_header!("forbidden.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::BadRequest));
@@ -68,7 +71,7 @@ fn test_host_disallowed() {
 
 #[test]
 fn test_host_allowed() {
-    let handler = setup_handler!("whitelist": vec!["example.org".to_string()]);
+    let handler = setup_handler!("whitelist": ["example.org"]);
     let headers = setup_origin_header!("example.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::Ok));
