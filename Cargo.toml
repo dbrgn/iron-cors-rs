@@ -1,6 +1,6 @@
 [package]
 name = "iron-cors"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Danilo Bargen <mail@dbrgn.ch>"]
 repository = "https://github.com/dbrgn/iron-cors-rs/"
 homepage = "https://github.com/dbrgn/iron-cors-rs/"
@@ -11,7 +11,7 @@ description = "A CORS middleware implementation for Iron."
 
 [dependencies]
 log = "0.3"
-iron = "0.4"
+iron = "0.5"
 
 [dev-dependencies]
-iron-test = "0.4.0"
+iron-test = "0.5.0"
