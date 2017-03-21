@@ -19,22 +19,26 @@
 //! be executed if the hostname in the `Origin` header matches one of the allowed
 //! hosts. Requests without an `Origin` header will be rejected.
 //!
-//! Initialize the middleware with a HashSet of allowed host strings:
+//! Initialize the middleware with a `HashSet` of allowed host strings:
 //!
 //! ```rust
 //! use std::collections::HashSet;
 //! use iron_cors::CorsMiddleware;
 //!
-//! let allowed_hosts = ["example.com"].iter().map(ToString::to_string).collect::<HashSet<_>>();
+//! let allowed_hosts = ["example.com"].iter()
+//!                                    .map(ToString::to_string)
+//!                                    .collect::<HashSet<_>>();
 //! let middleware = CorsMiddleware::with_whitelist(allowed_hosts);
 //! ```
 //!
-//! See `examples/whitelist.rs` for a full usage example.
+//! See
+//! [`examples/whitelist.rs`](https://github.com/dbrgn/iron-cors-rs/blob/master/examples/whitelist.rs)
+//! for a full usage example.
 //!
 //! ## Mode 2: Allow Any
 //!
-//! The user of the middleware can allow any origin header. The wrapped handler
-//! will only be executed if the `Origin` header is set. The value doesn't matter.
+//! Alternatively, the user of the middleware can choose to allow requests from
+//! any origin.
 //!
 //! ```rust
 //! use iron_cors::CorsMiddleware;
@@ -42,10 +46,13 @@
 //! let middleware = CorsMiddleware::with_allow_any(true);
 //! ```
 //!
-//! The boolean flag specifies whether requests without an `Origin` header should
-//! be rejected or not.
+//! The boolean flag specifies whether requests without an `Origin` header are
+//! acceptable. When set to `false`, requests without that header will be
+//! answered with a HTTP 400 response.
 //!
-//! See `examples/allow_any.rs` for a full usage example.
+//! See
+//! [`examples/allow_any.rs`](https://github.com/dbrgn/iron-cors-rs/blob/master/examples/allow_any.rs)
+//! for a full usage example.
 
 extern crate iron;
 #[macro_use] extern crate log;
