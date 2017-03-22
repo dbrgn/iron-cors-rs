@@ -122,6 +122,16 @@ struct CorsHandlerAllowAny {
     allow_invalid: bool,
 }
 
+impl CorsHandlerWhitelist {
+    fn add_cors_header(&self, headers: &mut headers::Headers, origin: &headers::Origin) {
+        let header = match origin.host.port {
+            Some(port) => format!("{}://{}:{}", &origin.scheme, &origin.host.hostname, &port),
+            None => format!("{}://{}", &origin.scheme, &origin.host.hostname),
+        };
+        headers.set(headers::AccessControlAllowOrigin::Value(header));
+    }
+}
+
 /// The handler that acts as an AroundMiddleware.
 ///
 /// It first checks an incoming request for appropriate CORS headers. If the
@@ -148,12 +158,7 @@ impl Handler for CorsHandlerWhitelist {
             let mut res = try!(self.handler.handle(req));
 
             // Add Access-Control-Allow-Origin header to response
-            let header = match origin.host.port {
-                Some(port) => format!("{}://{}:{}", &origin.scheme, &origin.host.hostname, &port),
-                None => format!("{}://{}", &origin.scheme, &origin.host.hostname),
-            };
-            res.headers.set(headers::AccessControlAllowOrigin::Value(header));
-
+            self.add_cors_header(&mut res.headers, &origin);
             Ok(res)
         } else {
             warn!("Got disallowed CORS request from {}", &origin.host.hostname);
@@ -161,6 +166,12 @@ impl Handler for CorsHandlerWhitelist {
         }
     }
 
+}
+
+impl CorsHandlerAllowAny {
+    fn add_cors_header(&self, headers: &mut headers::Headers) {
+        headers.set(headers::AccessControlAllowOrigin::Any);
+    }
 }
 
 /// The handler that acts as an AroundMiddleware.
@@ -186,9 +197,10 @@ impl Handler for CorsHandlerAllowAny {
         let mut res = try!(self.handler.handle(req));
 
         // Add Access-Control-Allow-Origin header to response
-        res.headers.set(headers::AccessControlAllowOrigin::Any);
+        self.add_cors_header(&mut res.headers);
 
         Ok(res)
+
     }
 
 }
