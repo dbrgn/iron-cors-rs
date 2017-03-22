@@ -12,6 +12,14 @@ Possible log types:
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
 
+### v0.5.1 (2017-03-22)
+
+- [fixed] Headers are now added to response even if handler returns an error (#4)
+
+### v0.5.0 (2017-03-21)
+
+- [changed] Upgrade iron to 0.5, minimal version of Rust required is now 0.11
+
 ### v0.4.0 (2017-01-16)
 
 - [changed] The whitelist is now initialized with a `HashSet` instead of a `Vec`
