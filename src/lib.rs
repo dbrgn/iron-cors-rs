@@ -122,6 +122,16 @@ struct CorsHandlerAllowAny {
     allow_invalid: bool,
 }
 
+impl CorsHandlerWhitelist {
+    fn add_cors_header(&self, headers: &mut headers::Headers, origin: &headers::Origin) {
+        let header = match origin.host.port {
+            Some(port) => format!("{}://{}:{}", &origin.scheme, &origin.host.hostname, &port),
+            None => format!("{}://{}", &origin.scheme, &origin.host.hostname),
+        };
+        headers.set(headers::AccessControlAllowOrigin::Value(header));
+    }
+}
+
 /// The handler that acts as an AroundMiddleware.
 ///
 /// It first checks an incoming request for appropriate CORS headers. If the
@@ -144,23 +154,22 @@ impl Handler for CorsHandlerWhitelist {
 
         // Process request
         if may_process {
-            // Everything OK, process request
-            let mut res = try!(self.handler.handle(req));
-
-            // Add Access-Control-Allow-Origin header to response
-            let header = match origin.host.port {
-                Some(port) => format!("{}://{}:{}", &origin.scheme, &origin.host.hostname, &port),
-                None => format!("{}://{}", &origin.scheme, &origin.host.hostname),
-            };
-            res.headers.set(headers::AccessControlAllowOrigin::Value(header));
-
-            Ok(res)
+            // Everything OK, process request and add CORS header to response
+            self.handler.handle(req)
+                .map(|mut res| { self.add_cors_header(&mut res.headers, &origin); res })
+                .map_err(|mut err| { self.add_cors_header(&mut err.response.headers, &origin); err })
         } else {
             warn!("Got disallowed CORS request from {}", &origin.host.hostname);
             Ok(Response::with((status::BadRequest, "Invalid CORS request: Origin not allowed")))
         }
     }
 
+}
+
+impl CorsHandlerAllowAny {
+    fn add_cors_header(&self, headers: &mut headers::Headers) {
+        headers.set(headers::AccessControlAllowOrigin::Any);
+    }
 }
 
 /// The handler that acts as an AroundMiddleware.
@@ -182,13 +191,9 @@ impl Handler for CorsHandlerAllowAny {
             _ => {},
         }
 
-        // Everything OK, process request
-        let mut res = try!(self.handler.handle(req));
-
-        // Add Access-Control-Allow-Origin header to response
-        res.headers.set(headers::AccessControlAllowOrigin::Value("*".into()));
-
-        Ok(res)
+        // Everything OK, process request and add CORS header to response
+        self.handler.handle(req)
+            .map(|mut res| { self.add_cors_header(&mut res.headers); res })
+            .map_err(|mut err| { self.add_cors_header(&mut err.response.headers); err })
     }
-
 }
