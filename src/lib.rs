@@ -186,7 +186,7 @@ impl Handler for CorsHandlerAllowAny {
         let mut res = try!(self.handler.handle(req));
 
         // Add Access-Control-Allow-Origin header to response
-        res.headers.set(headers::AccessControlAllowOrigin::Value("*".into()));
+        res.headers.set(headers::AccessControlAllowOrigin::Any);
 
         Ok(res)
     }
