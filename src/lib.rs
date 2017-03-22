@@ -154,18 +154,10 @@ impl Handler for CorsHandlerWhitelist {
 
         // Process request
         if may_process {
-            // Everything OK, process request
-            // Add Access-Control-Allow-Origin header to response
-            match self.handler.handle(req) {
-                Ok(mut res) => {
-                    self.add_cors_header(&mut res.headers, &origin);
-                    Ok(res)
-                },
-                Err(mut err) => {
-                    self.add_cors_header(&mut err.response.headers, &origin);
-                    Err(err)
-                },
-            }
+            // Everything OK, process request and add CORS header to response
+            self.handler.handle(req)
+                .map(|mut res| { self.add_cors_header(&mut res.headers, &origin); res })
+                .map_err(|mut err| { self.add_cors_header(&mut err.response.headers, &origin); err })
         } else {
             warn!("Got disallowed CORS request from {}", &origin.host.hostname);
             Ok(Response::with((status::BadRequest, "Invalid CORS request: Origin not allowed")))
@@ -199,18 +191,9 @@ impl Handler for CorsHandlerAllowAny {
             _ => {},
         }
 
-        // Everything OK, process request
-        // Add Access-Control-Allow-Origin header to response
-        match self.handler.handle(req) {
-            Ok(mut res) => {
-                self.add_cors_header(&mut res.headers);
-                Ok(res)
-            },
-            Err(mut err) => {
-                self.add_cors_header(&mut err.response.headers);
-                Err(err)
-            },
-        }
+        // Everything OK, process request and add CORS header to response
+        self.handler.handle(req)
+            .map(|mut res| { self.add_cors_header(&mut res.headers); res })
+            .map_err(|mut err| { self.add_cors_header(&mut err.response.headers); err })
     }
-
 }
