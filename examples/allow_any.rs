@@ -17,7 +17,7 @@ fn main() {
     let handler = HelloWorldHandler {};
 
     // Initialize middleware
-    let cors_middleware = CorsMiddleware::with_allow_any(true);
+    let cors_middleware = CorsMiddleware::with_allow_any();
     println!("Allowed origin hosts: *");
 
     // Setup chain with middleware

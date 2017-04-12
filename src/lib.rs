@@ -3,9 +3,6 @@
 //! See https://www.html5rocks.com/static/images/cors_server_flowchart.png for
 //! reference.
 //!
-//! The middleware will return `HTTP 400 Bad Request` if the Origin host is
-//! missing or not allowed.
-//!
 //! Preflight requests are not yet supported.
 //!
 //! # Usage
@@ -15,9 +12,9 @@
 //! ## Mode 1: Whitelist
 //!
 //! The user of the middleware must specify a list of allowed hosts (port or
-//! protocol aren't being checked by the middleware). The wrapped handler will only
-//! be executed if the hostname in the `Origin` header matches one of the allowed
-//! hosts. Requests without an `Origin` header will be rejected.
+//! protocol aren't being checked by the middleware). If the `Origin` header is
+//! set on a request and if the value matches one of the allowed hosts, the
+//! `Access-Control-Allow-Origin` header for that host is added to the response.
 //!
 //! Initialize the middleware with a `HashSet` of allowed host strings:
 //!
@@ -38,17 +35,14 @@
 //! ## Mode 2: Allow Any
 //!
 //! Alternatively, the user of the middleware can choose to allow requests from
-//! any origin.
+//! any origin. In that case, the `Access-Control-Allow-Origin` header is added
+//! to any request with an `Origin` header.
 //!
 //! ```rust
 //! use iron_cors::CorsMiddleware;
 //!
-//! let middleware = CorsMiddleware::with_allow_any(true);
+//! let middleware = CorsMiddleware::with_allow_any();
 //! ```
-//!
-//! The boolean flag specifies whether requests without an `Origin` header are
-//! acceptable. When set to `false`, requests without that header will be
-//! answered with a HTTP 400 response.
 //!
 //! See
 //! [`examples/allow_any.rs`](https://github.com/dbrgn/iron-cors-rs/blob/master/examples/allow_any.rs)
@@ -60,37 +54,27 @@ extern crate iron;
 use std::collections::HashSet;
 
 use iron::{Request, Response, IronResult, AroundMiddleware, Handler};
-use iron::{headers, status};
+use iron::headers;
 
 /// The struct that holds the CORS configuration.
 pub struct CorsMiddleware {
     allowed_hosts: Option<HashSet<String>>,
-    allow_invalid: bool,
 }
 
 impl CorsMiddleware {
     /// Specify which origin hosts are allowed to access the resource.
-    ///
-    /// Requests without an `Origin` header will be rejected.
     pub fn with_whitelist(allowed_hosts: HashSet<String>) -> Self {
         CorsMiddleware {
             allowed_hosts: Some(allowed_hosts),
-            allow_invalid: false,
         }
     }
 
     /// Allow all origins to access the resource. The
     /// `Access-Control-Allow-Origin` header of the response will be set to
     /// `*`.
-    ///
-    /// The `allow_invalid` parameter specifies whether requests without an
-    /// `Origin` header should be accepted or not. When set to `false`,
-    /// requests without that header will be answered with a HTTP 400
-    /// response.
-    pub fn with_allow_any(allow_invalid: bool) -> Self {
+    pub fn with_allow_any() -> Self {
         CorsMiddleware {
             allowed_hosts: None,
-            allow_invalid: allow_invalid,
         }
     }
 }
@@ -104,7 +88,6 @@ impl AroundMiddleware for CorsMiddleware {
             }),
             None => Box::new(CorsHandlerAllowAny {
                 handler: handler,
-                allow_invalid: self.allow_invalid,
             }),
         }
     }
@@ -119,7 +102,6 @@ struct CorsHandlerWhitelist {
 /// Handler if allowing any origin.
 struct CorsHandlerAllowAny {
     handler: Box<Handler>,
-    allow_invalid: bool,
 }
 
 impl CorsHandlerWhitelist {
@@ -135,17 +117,16 @@ impl CorsHandlerWhitelist {
 /// The handler that acts as an AroundMiddleware.
 ///
 /// It first checks an incoming request for appropriate CORS headers. If the
-/// request is allowed, then process it as usual. If not, return a proper error
-/// response.
+/// `Origin` header is present and the header value is in the whitelist, add
+/// the `Access-Control-Allow-Origin` header for that domain to the response.
+/// Otherwise, the request is processed as usual.
 impl Handler for CorsHandlerWhitelist {
-
     fn handle(&self, req: &mut Request) -> IronResult<Response> {
         // Extract origin header
-        let origin = match req.headers.get::<headers::Origin>() {
-            Some(origin) => origin.clone(),
+        let origin = match req.headers.get::<headers::Origin>().cloned() {
+            Some(o) => o,
             None => {
-                warn!("Not a valid CORS request: Missing Origin header");
-                return Ok(Response::with((status::BadRequest, "Invalid CORS request: Origin header missing")));
+                return self.handler.handle(req);
             }
         };
 
@@ -159,11 +140,11 @@ impl Handler for CorsHandlerWhitelist {
                 .map(|mut res| { self.add_cors_header(&mut res.headers, &origin); res })
                 .map_err(|mut err| { self.add_cors_header(&mut err.response.headers, &origin); err })
         } else {
+            // Not adding headers
             warn!("Got disallowed CORS request from {}", &origin.host.hostname);
-            Ok(Response::with((status::BadRequest, "Invalid CORS request: Origin not allowed")))
+            self.handler.handle(req)
         }
     }
-
 }
 
 impl CorsHandlerAllowAny {
@@ -175,25 +156,20 @@ impl CorsHandlerAllowAny {
 /// The handler that acts as an AroundMiddleware.
 ///
 /// It first checks an incoming request for appropriate CORS headers. If the
-/// `Origin` header is present, or if invalid CORS requests are allowed, then
-/// process it as usual. If not, return a proper error response.
+/// `Origin` header is present, then the `Access-Control-Allow-Origin: *`
+/// header is added to the response. If not, the request is processed as usual.
 impl Handler for CorsHandlerAllowAny {
-
     fn handle(&self, req: &mut Request) -> IronResult<Response> {
-        // Extract origin header
         match req.headers.get::<headers::Origin>() {
-            // If `Origin` wasn't set, abort if the user disallows invalid
-            // CORS requests.
-            None if !self.allow_invalid => {
-                warn!("Not a valid CORS request: Missing Origin header");
-                return Ok(Response::with((status::BadRequest, "Invalid CORS request: Origin header missing")));
+            None => {
+                self.handler.handle(req)
             },
-            _ => {},
+            Some(_) => {
+                self.handler.handle(req)
+                    .map(|mut res| { self.add_cors_header(&mut res.headers); res })
+                    .map_err(|mut err| { self.add_cors_header(&mut err.response.headers); err })
+            },
         }
 
-        // Everything OK, process request and add CORS header to response
-        self.handler.handle(req)
-            .map(|mut res| { self.add_cors_header(&mut res.headers); res })
-            .map_err(|mut err| { self.add_cors_header(&mut err.response.headers); err })
     }
 }
