@@ -41,15 +41,15 @@ macro_rules! setup_handler {
         chain.link_around(CorsMiddleware::with_whitelist(whitelist));
         chain
     }};
-    ("any": $allow_invalid:expr) => {{
+    ("any") => {{
         let mut chain = Chain::new(HelloWorldHandler {});
-        chain.link_around(CorsMiddleware::with_allow_any($allow_invalid));
+        chain.link_around(CorsMiddleware::with_allow_any());
         chain
     }};
 }
 
 macro_rules! setup_origin_header {
-    ( $origin_host:expr ) => {{
+    ($origin_host:expr) => {{
         let mut headers = Headers::new();
         headers.set(Origin::new("http", $origin_host, None));
         headers
@@ -67,92 +67,132 @@ fn test_no_middleware() {
 }
 
 #[test]
-fn test_missing_origin_header() {
+fn test_whitelist_missing_origin_header() {
+    //! Requests with missing origin header should be handled as usual
     let handler = setup_handler!("whitelist": ["example.org"]);
     let headers = Headers::new();
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
-    assert_eq!(response.status, Some(status::BadRequest));
+    assert_eq!(response.status, Some(status::Ok));
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_none());
+    }
+
     let result_body = response::extract_body_to_string(response);
-    assert_eq!(&result_body, "Invalid CORS request: Origin header missing");
+    assert_eq!(&result_body, "Hello, world!");
 }
 
 #[test]
-fn test_host_disallowed() {
+fn test_whitelist_host_disallowed() {
+    //! Requests with disallowed host will not return an ACAO header
     let handler = setup_handler!("whitelist": ["example.org"]);
     let headers = setup_origin_header!("forbidden.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
-    assert_eq!(response.status, Some(status::BadRequest));
+    assert_eq!(response.status, Some(status::Ok));
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_none());
+    }
+
     let result_body = response::extract_body_to_string(response);
-    assert_eq!(&result_body, "Invalid CORS request: Origin not allowed");
+    assert_eq!(&result_body, "Hello, world!");
 }
 
 #[test]
-fn test_host_allowed() {
+fn test_whitelist_host_allowed() {
+    //! Requests with whitelisted host will return an ACAO header
     let handler = setup_handler!("whitelist": ["example.org"]);
     let headers = setup_origin_header!("example.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::Ok));
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Value("http://example.org".into()));
+    }
+
     let result_body = response::extract_body_to_string(response);
     assert_eq!(&result_body, "Hello, world!");
 }
 
 #[test]
 fn test_allow_any() {
-    let handler = setup_handler!("any": false);
+    //! Requests with any origin header will return an ACAO header
+    let handler = setup_handler!("any");
     let headers = setup_origin_header!("example.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::Ok));
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Any);
+    }
+
     let result_body = response::extract_body_to_string(response);
     assert_eq!(&result_body, "Hello, world!");
 }
 
 #[test]
-fn test_allow_any_missing_header_allowed() {
-    let handler = setup_handler!("any": true);
+fn test_allow_any_missing_origin_header() {
+    //! Requests with any origin header will return an ACAO header
+    let handler = setup_handler!("any");
     let response = request::get("http://example.org:3000/hello", Headers::new(), &handler).unwrap();
     assert_eq!(response.status, Some(status::Ok));
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_none());
+    }
+
     let result_body = response::extract_body_to_string(response);
     assert_eq!(&result_body, "Hello, world!");
 }
 
 #[test]
-fn test_allow_any_missing_header_denied() {
-    let handler = setup_handler!("any": false);
-    let response = request::get("http://example.org:3000/hello", Headers::new(), &handler).unwrap();
-    assert_eq!(response.status, Some(status::BadRequest));
-    let result_body = response::extract_body_to_string(response);
-    assert_eq!(&result_body, "Invalid CORS request: Origin header missing");
-}
-
-#[test]
-fn test_intended_error_status() {
+fn test_allow_any_intended_error_status() {
     //! A regular non-200 response should contain CORS headers.
     let mut handler = Chain::new(ForbiddenHandler {});
-    handler.link_around(CorsMiddleware::with_allow_any(true));
+    handler.link_around(CorsMiddleware::with_allow_any());
     let headers = setup_origin_header!("example.org");
     let response = request::get("http://example.org:3000/forbidden", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::Forbidden));
-    assert!(response.headers.has::<AccessControlAllowOrigin>());
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Any);
+    }
+
     let result_body = response::extract_body_to_string(response);
     assert_eq!(&result_body, "You shall not pass!");
 }
 
 #[test]
-fn test_unexpected_error_status_allow_any() {
+fn test_allow_any_unexpected_error_status() {
     //! A response from an error inside a handler should contain CORS headers.
     let mut handler = Chain::new(ErrorResultHandler {});
-    handler.link_around(CorsMiddleware::with_allow_any(true));
+    handler.link_around(CorsMiddleware::with_allow_any());
     let headers = setup_origin_header!("example.org");
     let error = request::get("http://example.org:3000/err", headers, &handler).unwrap_err();
     let response = error.response;
     assert_eq!(response.status, Some(status::InternalServerError));
-    assert!(response.headers.has::<AccessControlAllowOrigin>());
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Any);
+    }
+
     let result_body = response::extract_body_to_string(response);
     assert_eq!(&result_body, "Oh noes");
 }
 
 #[test]
-fn test_unexpected_error_status_whitelist() {
+fn test_whitelist_unexpected_error_status() {
     //! A response from an error inside a handler should contain CORS headers.
     let mut handler = Chain::new(ErrorResultHandler {});
     let whitelist = ["example.org"].iter().map(ToString::to_string).collect::<HashSet<_>>();
@@ -161,7 +201,13 @@ fn test_unexpected_error_status_whitelist() {
     let error = request::get("http://example.org:3000/err", headers, &handler).unwrap_err();
     let response = error.response;
     assert_eq!(response.status, Some(status::InternalServerError));
-    assert!(response.headers.has::<AccessControlAllowOrigin>());
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Value("http://example.org".into()));
+    }
+
     let result_body = response::extract_body_to_string(response);
     assert_eq!(&result_body, "Oh noes");
 }
