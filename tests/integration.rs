@@ -1,12 +1,14 @@
 extern crate iron;
 extern crate iron_cors;
 extern crate iron_test;
+extern crate unicase;
 
+use unicase::UniCase;
 use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
 
 use iron::{Handler, Request, Response, IronResult, IronError, Chain, status};
-use iron::headers::{Headers, Origin, AccessControlAllowOrigin};
+use iron::headers::{Headers, Origin, AccessControlAllowOrigin, AccessControlRequestMethod, AccessControlRequestHeaders, AccessControlAllowHeaders, AccessControlAllowMethods};
 use self::iron_test::{request, response};
 use iron_cors::CorsMiddleware;
 
@@ -54,6 +56,11 @@ macro_rules! setup_origin_header {
         headers.set(Origin::new("http", $origin_host, None));
         headers
     }};
+    ($origin_host:expr, $port:expr) => {{
+        let mut headers = Headers::new();
+        headers.set(Origin::new("http", $origin_host, Some($port)));
+        headers
+    }};
 }
 
 #[test]
@@ -69,7 +76,7 @@ fn test_no_middleware() {
 #[test]
 fn test_whitelist_missing_origin_header() {
     //! Requests with missing origin header should be handled as usual
-    let handler = setup_handler!("whitelist": ["example.org"]);
+    let handler = setup_handler!("whitelist": ["http://example.org:3000"]);
     let headers = Headers::new();
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::Ok));
@@ -86,10 +93,10 @@ fn test_whitelist_missing_origin_header() {
 #[test]
 fn test_whitelist_host_disallowed() {
     //! Requests with disallowed host will not return an ACAO header
-    let handler = setup_handler!("whitelist": ["example.org"]);
-    let headers = setup_origin_header!("forbidden.org");
+    let handler = setup_handler!("whitelist": ["http://example.org:3000"]);
+    let headers = setup_origin_header!("http://forbidden.org");
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
-    assert_eq!(response.status, Some(status::Ok));
+    assert_eq!(response.status, Some(status::BadRequest));
 
     {
     let header = response.headers.get::<AccessControlAllowOrigin>();
@@ -97,21 +104,21 @@ fn test_whitelist_host_disallowed() {
     }
 
     let result_body = response::extract_body_to_string(response);
-    assert_eq!(&result_body, "Hello, world!");
+    assert_eq!(&result_body, "Invalid CORS request: Origin not allowed");
 }
 
 #[test]
 fn test_whitelist_host_allowed() {
     //! Requests with whitelisted host will return an ACAO header
-    let handler = setup_handler!("whitelist": ["example.org"]);
-    let headers = setup_origin_header!("example.org");
+    let handler = setup_handler!("whitelist": ["http://example.org:3000"]);
+    let headers = setup_origin_header!("example.org", 3000);
     let response = request::get("http://example.org:3000/hello", headers, &handler).unwrap();
     assert_eq!(response.status, Some(status::Ok));
 
     {
     let header = response.headers.get::<AccessControlAllowOrigin>();
     assert!(header.is_some());
-    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Value("http://example.org".into()));
+    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Value("http://example.org:3000".into()));
     }
 
     let result_body = response::extract_body_to_string(response);
@@ -195,9 +202,9 @@ fn test_allow_any_unexpected_error_status() {
 fn test_whitelist_unexpected_error_status() {
     //! A response from an error inside a handler should contain CORS headers.
     let mut handler = Chain::new(ErrorResultHandler {});
-    let whitelist = ["example.org"].iter().map(ToString::to_string).collect::<HashSet<_>>();
+    let whitelist = ["http://example.org:3000"].iter().map(ToString::to_string).collect::<HashSet<_>>();
     handler.link_around(CorsMiddleware::with_whitelist(whitelist));
-    let headers = setup_origin_header!("example.org");
+    let headers = setup_origin_header!("example.org", 3000);
     let error = request::get("http://example.org:3000/err", headers, &handler).unwrap_err();
     let response = error.response;
     assert_eq!(response.status, Some(status::InternalServerError));
@@ -205,9 +212,123 @@ fn test_whitelist_unexpected_error_status() {
     {
     let header = response.headers.get::<AccessControlAllowOrigin>();
     assert!(header.is_some());
-    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Value("http://example.org".into()));
+    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Value("http://example.org:3000".into()));
     }
 
     let result_body = response::extract_body_to_string(response);
     assert_eq!(&result_body, "Oh noes");
+}
+
+#[test]
+fn test_whitelist_preflight_with_cors_headers() {
+    //! OPTION requests with whitelisted host and correct CORS headers should answer 200 with empty body and the CORS headers 
+    let handler = setup_handler!("whitelist": ["http://example.org:3000"]);
+    
+    let headers = {
+        let mut headers = Headers::new();
+        headers.set(Origin::new("http", "example.org", Some(3000)));
+        headers.set(AccessControlRequestMethod(iron::method::Get));
+        headers.set(AccessControlRequestHeaders(vec!(UniCase("header1".to_string()),UniCase("header2".to_string()))));
+        headers
+    };
+
+    let response = request::options("http://example.org:3000/hello", headers, &handler).unwrap();
+    assert_eq!(response.status, Some(status::Ok));
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Value("http://example.org:3000".into()));
+    }
+
+    {
+    let header = response.headers.get::<AccessControlAllowHeaders>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowHeaders(vec!(UniCase("header1".to_string()),UniCase("header2".to_string()))));
+    }
+
+    {
+    let header = response.headers.get::<AccessControlAllowMethods>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowMethods(vec!(iron::method::Get)));
+    }
+
+    let result_body = response::extract_body_to_string(response);
+    assert_eq!(&result_body, "");
+}
+
+#[test]
+fn test_whitelist_preflight_without_cors_headers() {
+    //! OPTION requests with whitelisted host without CORS headers should answer call the normal handler without modify anything
+    let handler = setup_handler!("whitelist": ["http://example.org:3000"]);
+    
+    let headers = setup_origin_header!("example.org", 3000);
+
+    let response = request::options("http://example.org:3000/hello", headers, &handler).unwrap();
+    assert_eq!(response.status, Some(status::Ok));
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(!header.is_some());
+    }
+
+    let result_body = response::extract_body_to_string(response);
+    assert_eq!(&result_body, "Hello, world!");
+}
+
+#[test]
+fn test_any_preflight_with_cors_headers() {
+    //! OPTION requests with allow all hosts and correct CORS headers should answer 200 with empty body and the CORS headers 
+    let handler = setup_handler!("any");
+    
+    let headers = {
+        let mut headers = Headers::new();
+        headers.set(Origin::new("http", "example.org", Some(3000)));
+        headers.set(AccessControlRequestMethod(iron::method::Get));
+        headers.set(AccessControlRequestHeaders(vec!(UniCase("header1".to_string()),UniCase("header2".to_string()))));
+        headers
+    };
+
+    let response = request::options("http://example.org:3000/hello", headers, &handler).unwrap();
+    assert_eq!(response.status, Some(status::Ok));
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowOrigin::Any);
+    }
+
+    {
+    let header = response.headers.get::<AccessControlAllowHeaders>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowHeaders(vec!(UniCase("header1".to_string()),UniCase("header2".to_string()))));
+    }
+
+    {
+    let header = response.headers.get::<AccessControlAllowMethods>();
+    assert!(header.is_some());
+    assert_eq!(*header.unwrap(), AccessControlAllowMethods(vec!(iron::method::Get)));
+    }
+
+    let result_body = response::extract_body_to_string(response);
+    assert_eq!(&result_body, "");
+}
+
+#[test]
+fn test_any_preflight_without_cors_headers() {
+    //! OPTION requests with allow all hosts without CORS headers should answer call the normal handler without modify anything
+    let handler = setup_handler!("any");
+    
+    let headers = setup_origin_header!("example.org", 3000);
+
+    let response = request::options("http://example.org:3000/hello", headers, &handler).unwrap();
+    assert_eq!(response.status, Some(status::Ok));
+
+    {
+    let header = response.headers.get::<AccessControlAllowOrigin>();
+    assert!(!header.is_some());
+    }
+
+    let result_body = response::extract_body_to_string(response);
+    assert_eq!(&result_body, "Hello, world!");
 }
