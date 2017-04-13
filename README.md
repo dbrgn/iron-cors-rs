@@ -8,7 +8,7 @@ A CORS Middleware for [Iron](http://ironframework.io/).
 See https://www.html5rocks.com/static/images/cors_server_flowchart.png for
 reference.
 
-Preflight requests are not yet supported. Pull requests adding it are welcome.
+Preflight requests **are supported**! :D
 
 Docs: https://docs.rs/iron-cors/
 
