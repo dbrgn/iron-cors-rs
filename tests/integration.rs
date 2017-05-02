@@ -228,7 +228,7 @@ fn test_whitelist_preflight_with_cors_headers() {
         let mut headers = Headers::new();
         headers.set(Origin::new("http", "example.org", Some(3000)));
         headers.set(AccessControlRequestMethod(iron::method::Get));
-        headers.set(AccessControlRequestHeaders(vec!(UniCase("header1".to_string()),UniCase("header2".to_string()))));
+        headers.set(AccessControlRequestHeaders(vec![UniCase("header1".to_string()),UniCase("header2".to_string())]));
         headers
     };
 
@@ -244,13 +244,13 @@ fn test_whitelist_preflight_with_cors_headers() {
     {
     let header = response.headers.get::<AccessControlAllowHeaders>();
     assert!(header.is_some());
-    assert_eq!(*header.unwrap(), AccessControlAllowHeaders(vec!(UniCase("header1".to_string()),UniCase("header2".to_string()))));
+    assert_eq!(*header.unwrap(), AccessControlAllowHeaders(vec![UniCase("header1".to_string()),UniCase("header2".to_string())]));
     }
 
     {
     let header = response.headers.get::<AccessControlAllowMethods>();
     assert!(header.is_some());
-    assert_eq!(*header.unwrap(), AccessControlAllowMethods(vec!(iron::method::Get)));
+    assert_eq!(*header.unwrap(), AccessControlAllowMethods(vec![iron::method::Get]));
     }
 
     let result_body = response::extract_body_to_string(response);
