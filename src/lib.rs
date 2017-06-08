@@ -117,6 +117,7 @@ impl CorsHandlerWhitelist {
                                   origin: &headers::Origin, 
                                   acrm: &headers::AccessControlRequestMethod, 
                                   acrh: Option<&headers::AccessControlRequestHeaders>) {
+
         self.add_cors_header(headers, origin);
 
         //Copy the method requested by the browser in the allowed methods header
@@ -204,7 +205,11 @@ impl CorsHandlerAllowAny {
         headers.set(headers::AccessControlAllowOrigin::Any);
     }
 
-    fn add_cors_preflight_headers(&self, headers: &mut headers::Headers, acrm: &headers::AccessControlRequestMethod, acrh: Option<&headers::AccessControlRequestHeaders>) {
+    fn add_cors_preflight_headers(&self, 
+                                  headers: &mut headers::Headers, 
+                                  acrm: &headers::AccessControlRequestMethod, 
+                                  acrh: Option<&headers::AccessControlRequestHeaders>) {
+
         self.add_cors_header(headers);
 
         //Copy the method requested by the browser in the allowed methods header
