@@ -154,8 +154,8 @@ impl CorsHandlerWhitelist {
             }
         }  
 
-        // If we don't have an Access-Control-Request-Method header, is not a preflight
-        self.handler.handle(req)
+        // If we don't have an Access-Control-Request-Method header, treat as a possible OPTION CORS call
+        return self.process_possible_cors_request(req, origin)
     }
 
     fn process_possible_cors_request(&self, req: &mut Request, origin: headers::Origin) -> IronResult<Response> {
@@ -238,8 +238,8 @@ impl CorsHandlerAllowAny {
             }
         }  
 
-        // If we don't have an Access-Control-Request-Method header, is not a preflight
-        self.handler.handle(req)
+        // If we don't have an Access-Control-Request-Method header, treat as a possible OPTION CORS call
+        return self.process_possible_cors_request(req)
     }
 
     fn process_possible_cors_request(&self, req: &mut Request) -> IronResult<Response> {

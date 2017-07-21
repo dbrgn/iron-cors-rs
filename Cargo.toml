@@ -1,6 +1,6 @@
 [package]
 name = "iron-cors"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Danilo Bargen <mail@dbrgn.ch>"]
 repository = "https://github.com/dbrgn/iron-cors-rs/"
 homepage = "https://github.com/dbrgn/iron-cors-rs/"
