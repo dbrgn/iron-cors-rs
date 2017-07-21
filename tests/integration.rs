@@ -258,25 +258,6 @@ fn test_whitelist_preflight_with_cors_headers() {
 }
 
 #[test]
-fn test_whitelist_preflight_without_cors_headers() {
-    //! OPTION requests with whitelisted host without CORS headers should answer call the normal handler without modify anything
-    let handler = setup_handler!("whitelist": ["http://example.org:3000"]);
-    
-    let headers = setup_origin_header!("example.org", 3000);
-
-    let response = request::options("http://example.org:3000/hello", headers, &handler).unwrap();
-    assert_eq!(response.status, Some(status::Ok));
-
-    {
-    let header = response.headers.get::<AccessControlAllowOrigin>();
-    assert!(!header.is_some());
-    }
-
-    let result_body = response::extract_body_to_string(response);
-    assert_eq!(&result_body, "Hello, world!");
-}
-
-#[test]
 fn test_any_preflight_with_cors_headers() {
     //! OPTION requests with allow all hosts and correct CORS headers should answer 200 with empty body and the CORS headers 
     let handler = setup_handler!("any");
@@ -312,23 +293,4 @@ fn test_any_preflight_with_cors_headers() {
 
     let result_body = response::extract_body_to_string(response);
     assert_eq!(&result_body, "");
-}
-
-#[test]
-fn test_any_preflight_without_cors_headers() {
-    //! OPTION requests with allow all hosts without CORS headers should answer call the normal handler without modify anything
-    let handler = setup_handler!("any");
-    
-    let headers = setup_origin_header!("example.org", 3000);
-
-    let response = request::options("http://example.org:3000/hello", headers, &handler).unwrap();
-    assert_eq!(response.status, Some(status::Ok));
-
-    {
-    let header = response.headers.get::<AccessControlAllowOrigin>();
-    assert!(!header.is_some());
-    }
-
-    let result_body = response::extract_body_to_string(response);
-    assert_eq!(&result_body, "Hello, world!");
 }
