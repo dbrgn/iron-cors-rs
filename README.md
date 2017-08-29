@@ -2,6 +2,7 @@
 
 [![Travis CI][travis-ci-badge]][travis-ci]
 [![Crates.io][crates-io-badge]][crates-io]
+[![Rust][rust-badge]][github]
 
 A CORS Middleware for [Iron](http://ironframework.io/).
 
@@ -11,6 +12,8 @@ reference.
 Preflight requests **are supported**! :D
 
 Docs: https://docs.rs/iron-cors/
+
+This library requires Rust 1.12+.
 
 ## License
 
@@ -34,3 +37,5 @@ be dual licensed as above, without any additional terms or conditions.
 [travis-ci-badge]: https://img.shields.io/travis/dbrgn/iron-cors-rs.svg
 [crates-io]: https://crates.io/crates/iron-cors
 [crates-io-badge]: https://img.shields.io/crates/v/iron-cors.svg
+[github]: https://github.com/dbrgn/iron-cors-rs
+[rust-badge]: https://img.shields.io/badge/rust-1.12%2B-blue.svg?maxAge=3600
