@@ -12,6 +12,11 @@ Possible log types:
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
 
+### v0.6.0-rc.1 (2017-08-29)
+
+- [changed] Require at least Rust 1.17
+- [added] Implement support for preflight requests (#9, thanks @DavidBM!)
+
 ### v0.5.1 (2017-03-22)
 
 - [fixed] Headers are now added to response even if handler returns an error (#4)

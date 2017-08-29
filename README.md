@@ -13,6 +13,9 @@ Docs: https://docs.rs/iron-cors/
 
 This library requires Rust 1.17+.
 
+**Note:** Support for preflight requests is currently released as version
+`0.6.0-rc.1`. Testing is welcome.
+
 ## License
 
 Licensed under either of
