@@ -11,7 +11,7 @@ reference.
 
 Docs: https://docs.rs/iron-cors/
 
-This library requires Rust 1.12+.
+This library requires Rust 1.17+.
 
 ## License
 
@@ -36,4 +36,4 @@ be dual licensed as above, without any additional terms or conditions.
 [crates-io]: https://crates.io/crates/iron-cors
 [crates-io-badge]: https://img.shields.io/crates/v/iron-cors.svg
 [github]: https://github.com/dbrgn/iron-cors-rs
-[rust-badge]: https://img.shields.io/badge/rust-1.12%2B-blue.svg?maxAge=3600
+[rust-badge]: https://img.shields.io/badge/rust-1.17%2B-blue.svg?maxAge=3600
