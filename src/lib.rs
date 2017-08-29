@@ -112,18 +112,18 @@ impl CorsHandlerWhitelist {
         headers.set(headers::AccessControlAllowOrigin::Value(header));
     }
 
-    fn add_cors_preflight_headers(&self, 
-                                  headers: &mut headers::Headers, 
-                                  origin: &headers::Origin, 
-                                  acrm: &headers::AccessControlRequestMethod, 
+    fn add_cors_preflight_headers(&self,
+                                  headers: &mut headers::Headers,
+                                  origin: &headers::Origin,
+                                  acrm: &headers::AccessControlRequestMethod,
                                   acrh: Option<&headers::AccessControlRequestHeaders>) {
 
         self.add_cors_header(headers, origin);
 
-        //Copy the method requested by the browser in the allowed methods header
+        // Copy the method requested by the browser in the allowed methods header
         headers.set(headers::AccessControlAllowMethods(vec!(acrm.0.clone())));
-        
-        //If we have special allowed headers, copy them in the allowed headers in the response
+
+        // If we have special allowed headers, copy them in the allowed headers in the response
         if let Some(acrh) = acrh {
             headers.set(headers::AccessControlAllowHeaders(acrh.0.clone()));
         }
@@ -141,18 +141,18 @@ impl CorsHandlerWhitelist {
         {
             let acrm = req.headers.get::<headers::AccessControlRequestMethod>();
 
-            //Check the Access-Control-Request-Method header
+            // Check the Access-Control-Request-Method header
             if let Some(acrm) = acrm {
-                //Asuming that Access-Control-Request-Method header is valid (headers names can be anything)
+                // Assuming that Access-Control-Request-Method header is valid (header names can be anything)
                 let acrh = req.headers.get::<headers::AccessControlRequestHeaders>();
 
                 let mut response = Response::with((status::Ok, ""));
                 self.add_cors_preflight_headers(&mut response.headers, &origin, acrm, acrh);
 
-                //In case of preflight, return 200 with empty body after adding the preflight headers
+                // In case of preflight, return 200 with empty body after adding the preflight headers
                 return Ok(response);
             }
-        }  
+        }
 
         // If we don't have an Access-Control-Request-Method header, treat as a possible OPTION CORS call
         return self.process_possible_cors_request(req, origin)
@@ -192,9 +192,9 @@ impl Handler for CorsHandlerWhitelist {
         };
 
         match req.method {
-            //If is an OPTION request, check for preflight 
+            // If this is an OPTION request, check for preflight
             Method::Options => self.process_possible_preflight(req, origin),
-            // If is not an OPTION request, we asume a normal CORS (no preflight)
+            // If is not an OPTION request, we assume a normal CORS (no preflight)
             _ => self.process_possible_cors_request(req, origin),
         }
     }
@@ -205,17 +205,17 @@ impl CorsHandlerAllowAny {
         headers.set(headers::AccessControlAllowOrigin::Any);
     }
 
-    fn add_cors_preflight_headers(&self, 
-                                  headers: &mut headers::Headers, 
-                                  acrm: &headers::AccessControlRequestMethod, 
+    fn add_cors_preflight_headers(&self,
+                                  headers: &mut headers::Headers,
+                                  acrm: &headers::AccessControlRequestMethod,
                                   acrh: Option<&headers::AccessControlRequestHeaders>) {
 
         self.add_cors_header(headers);
 
-        //Copy the method requested by the browser in the allowed methods header
+        // Copy the method requested by the browser into the allowed methods header
         headers.set(headers::AccessControlAllowMethods(vec!(acrm.0.clone())));
-        
-        //If we have special allowed headers, copy them in the allowed headers in the response
+
+        // If we have special allowed headers, copy them into the allowed headers in the response
         if let Some(acrh) = acrh {
             headers.set(headers::AccessControlAllowHeaders(acrh.0.clone()));
         }
@@ -225,18 +225,18 @@ impl CorsHandlerAllowAny {
         {
             let acrm = req.headers.get::<headers::AccessControlRequestMethod>();
 
-            //Check the Access-Control-Request-Method header
+            // Check the Access-Control-Request-Method header
             if let Some(acrm) = acrm {
-                //Asuming that Access-Control-Request-Method header is valid (headers names can be anything)
+                // Assuming that Access-Control-Request-Method header is valid (header names can be anything)
                 let acrh = req.headers.get::<headers::AccessControlRequestHeaders>();
 
                 let mut response = Response::with((status::Ok, ""));
                 self.add_cors_preflight_headers(&mut response.headers, acrm, acrh);
 
-                //In case of preflight, return 200 with empty body after adding the preflight headers
+                // In case of preflight, return 200 with empty body after adding the preflight headers
                 return Ok(response);
             }
-        }  
+        }
 
         // If we don't have an Access-Control-Request-Method header, treat as a possible OPTION CORS call
         return self.process_possible_cors_request(req)
@@ -262,9 +262,9 @@ impl Handler for CorsHandlerAllowAny {
             },
             Some(_) => {
                 match req.method {
-                    //If is an OPTION request, check for preflight 
+                    //If is an OPTION request, check for preflight
                     Method::Options => self.process_possible_preflight(req),
-                    // If is not an OPTION request, we asume a normal CORS (no preflight)
+                    // If is not an OPTION request, we assume a normal CORS (no preflight)
                     _ => self.process_possible_cors_request(req),
                 }
             },

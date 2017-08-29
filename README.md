@@ -4,12 +4,10 @@
 [![Crates.io][crates-io-badge]][crates-io]
 [![Rust][rust-badge]][github]
 
-A CORS Middleware for [Iron](http://ironframework.io/).
+A CORS Middleware for [Iron](http://ironframework.io/) with preflight support.
 
 See https://www.html5rocks.com/static/images/cors_server_flowchart.png for
 reference.
-
-Preflight requests **are supported**! :D
 
 Docs: https://docs.rs/iron-cors/
 
