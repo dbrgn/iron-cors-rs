@@ -15,3 +15,4 @@ iron = "0.5"
 
 [dev-dependencies]
 iron-test = "0.5.0"
+unicase = "1.4.0"
