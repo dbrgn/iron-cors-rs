@@ -49,7 +49,8 @@
 //! for a full usage example.
 
 extern crate iron;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 use std::collections::HashSet;
 
@@ -61,6 +62,7 @@ use iron::headers;
 /// The struct that holds the CORS configuration.
 pub struct CorsMiddleware {
     allowed_hosts: Option<HashSet<String>>,
+    allow_credentials: bool,
 }
 
 impl CorsMiddleware {
@@ -68,7 +70,12 @@ impl CorsMiddleware {
     pub fn with_whitelist(allowed_hosts: HashSet<String>) -> Self {
         CorsMiddleware {
             allowed_hosts: Some(allowed_hosts),
+            allow_credentials: false,
         }
+    }
+
+    pub fn allow_credentials(&mut self) {
+        self.allow_credentials = true;
     }
 
     /// Allow all origins to access the resource. The
@@ -77,6 +84,7 @@ impl CorsMiddleware {
     pub fn with_allow_any() -> Self {
         CorsMiddleware {
             allowed_hosts: None,
+            allow_credentials: false,
         }
     }
 }
@@ -85,11 +93,13 @@ impl AroundMiddleware for CorsMiddleware {
     fn around(self, handler: Box<Handler>) -> Box<Handler> {
         match self.allowed_hosts {
             Some(allowed_hosts) => Box::new(CorsHandlerWhitelist {
-                handler: handler,
-                allowed_hosts: allowed_hosts,
+                handler,
+                allowed_hosts,
+                allow_credentials: self.allow_credentials,
             }),
             None => Box::new(CorsHandlerAllowAny {
-                handler: handler,
+                handler,
+                allow_credentials: self.allow_credentials,
             }),
         }
     }
@@ -99,17 +109,23 @@ impl AroundMiddleware for CorsMiddleware {
 struct CorsHandlerWhitelist {
     handler: Box<Handler>,
     allowed_hosts: HashSet<String>,
+    allow_credentials: bool,
 }
 
 /// Handler if allowing any origin.
 struct CorsHandlerAllowAny {
     handler: Box<Handler>,
+    allow_credentials: bool,
 }
 
 impl CorsHandlerWhitelist {
     fn add_cors_header(&self, headers: &mut headers::Headers, origin: &headers::Origin) {
         let header = format_cors_origin(origin);
         headers.set(headers::AccessControlAllowOrigin::Value(header));
+
+        if self.allow_credentials {
+            headers.set(headers::AccessControlAllowCredentials)
+        }
     }
 
     fn add_cors_preflight_headers(&self,
@@ -117,7 +133,6 @@ impl CorsHandlerWhitelist {
                                   origin: &headers::Origin,
                                   acrm: &headers::AccessControlRequestMethod,
                                   acrh: Option<&headers::AccessControlRequestHeaders>) {
-
         self.add_cors_header(headers, origin);
 
         // Copy the method requested by the browser in the allowed methods header
@@ -155,7 +170,7 @@ impl CorsHandlerWhitelist {
         }
 
         // If we don't have an Access-Control-Request-Method header, treat as a possible OPTION CORS call
-        return self.process_possible_cors_request(req, origin)
+        return self.process_possible_cors_request(req, origin);
     }
 
     fn process_possible_cors_request(&self, req: &mut Request, origin: headers::Origin) -> IronResult<Response> {
@@ -165,8 +180,14 @@ impl CorsHandlerWhitelist {
         if may_process {
             // Everything OK, process request and add CORS header to response
             self.handler.handle(req)
-                .map(|mut res| { self.add_cors_header(&mut res.headers, &origin); res })
-                .map_err(|mut err| { self.add_cors_header(&mut err.response.headers, &origin); err })
+                .map(|mut res| {
+                    self.add_cors_header(&mut res.headers, &origin);
+                    res
+                })
+                .map_err(|mut err| {
+                    self.add_cors_header(&mut err.response.headers, &origin);
+                    err
+                })
         } else {
             // Not adding headers
             warn!("Got disallowed CORS request from {}", &origin.host.hostname);
@@ -203,13 +224,16 @@ impl Handler for CorsHandlerWhitelist {
 impl CorsHandlerAllowAny {
     fn add_cors_header(&self, headers: &mut headers::Headers) {
         headers.set(headers::AccessControlAllowOrigin::Any);
+
+        if self.allow_credentials {
+            headers.set(headers::AccessControlAllowCredentials)
+        }
     }
 
     fn add_cors_preflight_headers(&self,
                                   headers: &mut headers::Headers,
                                   acrm: &headers::AccessControlRequestMethod,
                                   acrh: Option<&headers::AccessControlRequestHeaders>) {
-
         self.add_cors_header(headers);
 
         // Copy the method requested by the browser into the allowed methods header
@@ -239,13 +263,19 @@ impl CorsHandlerAllowAny {
         }
 
         // If we don't have an Access-Control-Request-Method header, treat as a possible OPTION CORS call
-        return self.process_possible_cors_request(req)
+        return self.process_possible_cors_request(req);
     }
 
     fn process_possible_cors_request(&self, req: &mut Request) -> IronResult<Response> {
         self.handler.handle(req)
-            .map(|mut res| { self.add_cors_header(&mut res.headers); res })
-            .map_err(|mut err| { self.add_cors_header(&mut err.response.headers); err })
+            .map(|mut res| {
+                self.add_cors_header(&mut res.headers);
+                res
+            })
+            .map_err(|mut err| {
+                self.add_cors_header(&mut err.response.headers);
+                err
+            })
     }
 }
 
@@ -259,7 +289,7 @@ impl Handler for CorsHandlerAllowAny {
         match req.headers.get::<headers::Origin>() {
             None => {
                 self.handler.handle(req)
-            },
+            }
             Some(_) => {
                 match req.method {
                     //If is an OPTION request, check for preflight
@@ -267,7 +297,7 @@ impl Handler for CorsHandlerAllowAny {
                     // If is not an OPTION request, we assume a normal CORS (no preflight)
                     _ => self.process_possible_cors_request(req),
                 }
-            },
+            }
         }
     }
 }
