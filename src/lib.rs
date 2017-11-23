@@ -62,7 +62,6 @@ use iron::headers;
 /// The struct that holds the CORS configuration.
 pub struct CorsMiddleware {
     allowed_hosts: Option<HashSet<String>>,
-    allow_credentials: bool,
 }
 
 impl CorsMiddleware {
@@ -70,12 +69,7 @@ impl CorsMiddleware {
     pub fn with_whitelist(allowed_hosts: HashSet<String>) -> Self {
         CorsMiddleware {
             allowed_hosts: Some(allowed_hosts),
-            allow_credentials: false,
         }
-    }
-
-    pub fn allow_credentials(&mut self) {
-        self.allow_credentials = true;
     }
 
     /// Allow all origins to access the resource. The
@@ -84,7 +78,6 @@ impl CorsMiddleware {
     pub fn with_allow_any() -> Self {
         CorsMiddleware {
             allowed_hosts: None,
-            allow_credentials: false,
         }
     }
 }
@@ -95,11 +88,9 @@ impl AroundMiddleware for CorsMiddleware {
             Some(allowed_hosts) => Box::new(CorsHandlerWhitelist {
                 handler,
                 allowed_hosts,
-                allow_credentials: self.allow_credentials,
             }),
             None => Box::new(CorsHandlerAllowAny {
                 handler,
-                allow_credentials: self.allow_credentials,
             }),
         }
     }
@@ -109,23 +100,18 @@ impl AroundMiddleware for CorsMiddleware {
 struct CorsHandlerWhitelist {
     handler: Box<Handler>,
     allowed_hosts: HashSet<String>,
-    allow_credentials: bool,
+
 }
 
 /// Handler if allowing any origin.
 struct CorsHandlerAllowAny {
     handler: Box<Handler>,
-    allow_credentials: bool,
 }
 
 impl CorsHandlerWhitelist {
     fn add_cors_header(&self, headers: &mut headers::Headers, origin: &headers::Origin) {
         let header = format_cors_origin(origin);
         headers.set(headers::AccessControlAllowOrigin::Value(header));
-
-        if self.allow_credentials {
-            headers.set(headers::AccessControlAllowCredentials)
-        }
     }
 
     fn add_cors_preflight_headers(&self,
@@ -133,6 +119,7 @@ impl CorsHandlerWhitelist {
                                   origin: &headers::Origin,
                                   acrm: &headers::AccessControlRequestMethod,
                                   acrh: Option<&headers::AccessControlRequestHeaders>) {
+
         self.add_cors_header(headers, origin);
 
         // Copy the method requested by the browser in the allowed methods header
@@ -224,10 +211,6 @@ impl Handler for CorsHandlerWhitelist {
 impl CorsHandlerAllowAny {
     fn add_cors_header(&self, headers: &mut headers::Headers) {
         headers.set(headers::AccessControlAllowOrigin::Any);
-
-        if self.allow_credentials {
-            headers.set(headers::AccessControlAllowCredentials)
-        }
     }
 
     fn add_cors_preflight_headers(&self,
