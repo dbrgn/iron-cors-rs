@@ -59,9 +59,37 @@ use iron::method::Method;
 use iron::status;
 use iron::headers;
 
+/// The struct that builds a CorsMiddleware
+pub struct CorsMiddlewareBuilder {
+    allowed_hosts: Option<HashSet<String>>,
+    allow_credentials: bool
+}
+
+impl CorsMiddlewareBuilder {
+    pub fn new() -> Self {
+        CorsMiddlewareBuilder{allow_credentials: false, allowed_hosts: None}
+    }
+
+    /// Specify which origin hosts are allowed to access the resource.
+    pub fn allowed_hosts(&mut self, allowed_hosts: HashSet<String>) -> &mut Self {
+        self.allowed_hosts = Some(allowed_hosts);
+        self
+    }
+    /// Specify Access-Control-Allow-Credentials
+    pub fn allow_credentials(&mut self, allow_credentials: bool) -> &mut Self {
+        self.allow_credentials = allow_credentials;
+        self
+    }
+
+    pub fn build(self) -> CorsMiddleware {
+        CorsMiddleware{allowed_hosts: self.allowed_hosts, allow_credentials: self.allow_credentials }
+    }
+}
+
 /// The struct that holds the CORS configuration.
 pub struct CorsMiddleware {
     allowed_hosts: Option<HashSet<String>>,
+    allow_credentials: bool,
 }
 
 impl CorsMiddleware {
@@ -69,6 +97,7 @@ impl CorsMiddleware {
     pub fn with_whitelist(allowed_hosts: HashSet<String>) -> Self {
         CorsMiddleware {
             allowed_hosts: Some(allowed_hosts),
+            allow_credentials: false,
         }
     }
 
@@ -78,6 +107,7 @@ impl CorsMiddleware {
     pub fn with_allow_any() -> Self {
         CorsMiddleware {
             allowed_hosts: None,
+            allow_credentials: false,
         }
     }
 }
@@ -88,9 +118,11 @@ impl AroundMiddleware for CorsMiddleware {
             Some(allowed_hosts) => Box::new(CorsHandlerWhitelist {
                 handler,
                 allowed_hosts,
+                allow_credentials: self.allow_credentials,
             }),
             None => Box::new(CorsHandlerAllowAny {
                 handler,
+                allow_credentials: self.allow_credentials,
             }),
         }
     }
@@ -100,18 +132,23 @@ impl AroundMiddleware for CorsMiddleware {
 struct CorsHandlerWhitelist {
     handler: Box<Handler>,
     allowed_hosts: HashSet<String>,
-
+    allow_credentials: bool,
 }
 
 /// Handler if allowing any origin.
 struct CorsHandlerAllowAny {
     handler: Box<Handler>,
+    allow_credentials: bool,
 }
 
 impl CorsHandlerWhitelist {
     fn add_cors_header(&self, headers: &mut headers::Headers, origin: &headers::Origin) {
         let header = format_cors_origin(origin);
         headers.set(headers::AccessControlAllowOrigin::Value(header));
+
+        if self.allow_credentials {
+            headers.set(headers::AccessControlAllowCredentials)
+        }
     }
 
     fn add_cors_preflight_headers(&self,
@@ -211,6 +248,10 @@ impl Handler for CorsHandlerWhitelist {
 impl CorsHandlerAllowAny {
     fn add_cors_header(&self, headers: &mut headers::Headers) {
         headers.set(headers::AccessControlAllowOrigin::Any);
+
+        if self.allow_credentials {
+            headers.set(headers::AccessControlAllowCredentials)
+        }
     }
 
     fn add_cors_preflight_headers(&self,
