@@ -81,8 +81,8 @@ impl CorsMiddlewareBuilder {
         self
     }
 
-    pub fn build(self) -> CorsMiddleware {
-        CorsMiddleware{allowed_hosts: self.allowed_hosts, allow_credentials: self.allow_credentials }
+    pub fn build(&self) -> CorsMiddleware {
+        CorsMiddleware{allowed_hosts: self.allowed_hosts.clone(), allow_credentials: self.allow_credentials }
     }
 }
 
