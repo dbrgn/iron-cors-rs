@@ -67,7 +67,7 @@ pub struct CorsMiddlewareBuilder {
 
 impl CorsMiddlewareBuilder {
     pub fn new() -> Self {
-        CorsMiddlewareBuilder{allow_credentials: false, allowed_hosts: None}
+        CorsMiddlewareBuilder { allow_credentials: false, allowed_hosts: None }
     }
 
     /// Specify which origin hosts are allowed to access the resource.
@@ -82,7 +82,7 @@ impl CorsMiddlewareBuilder {
     }
 
     pub fn build(&self) -> CorsMiddleware {
-        CorsMiddleware{allowed_hosts: self.allowed_hosts.clone(), allow_credentials: self.allow_credentials }
+        CorsMiddleware { allowed_hosts: self.allowed_hosts.clone(), allow_credentials: self.allow_credentials }
     }
 }
 
@@ -156,7 +156,6 @@ impl CorsHandlerWhitelist {
                                   origin: &headers::Origin,
                                   acrm: &headers::AccessControlRequestMethod,
                                   acrh: Option<&headers::AccessControlRequestHeaders>) {
-
         self.add_cors_header(headers, origin);
 
         // Copy the method requested by the browser in the allowed methods header
