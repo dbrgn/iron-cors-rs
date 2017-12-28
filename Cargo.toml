@@ -10,9 +10,9 @@ readme = "README.md"
 description = "A CORS middleware implementation for Iron."
 
 [dependencies]
-log = "0.3"
-iron = "0.5"
+log = "0.4"
+iron = "0.6"
 
 [dev-dependencies]
-iron-test = "0.5.0"
+iron-test = "0.6.0"
 unicase = "1.4.0"
