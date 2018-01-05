@@ -12,6 +12,14 @@ Possible log types:
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
 
+### v0.7.0 (2018-01-05)
+
+- [changed] Update log dependency to 0.4
+- [changed] Update iron dependency to 0.6
+
+Note that the version 0.6.0 has been skipped due to the potentially breaking
+iron version upgrade.
+
 ### v0.6.0-rc.1 (2017-08-29)
 
 - [changed] Require at least Rust 1.17
