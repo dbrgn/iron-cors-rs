@@ -1,9 +1,7 @@
-//! A CORS middleware for Iron.
+//! A CORS middleware for [Iron](http://ironframework.io/) with preflight support.
 //!
 //! See https://www.html5rocks.com/static/images/cors_server_flowchart.png for
 //! reference.
-//!
-//! Preflight requests are not yet supported.
 //!
 //! # Usage
 //!
