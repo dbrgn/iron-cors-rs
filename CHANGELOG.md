@@ -12,6 +12,13 @@ Possible log types:
 - `[security]` to invite users to upgrade in case of vulnerabilities.
 
 
+### v0.8.0 (2018-06-14)
+
+This release raises the min supported Rust version to 1.21, due to a patch
+release of a transitive dependency that does not work on 1.17 anymore.
+
+No functional changes.
+
 ### v0.7.1 (2018-06-12)
 
 This is a documentation-only update.
